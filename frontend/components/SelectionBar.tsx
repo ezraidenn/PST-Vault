@@ -29,7 +29,7 @@ export function SelectionBar({ pstId, onExportComplete }: SelectionBarProps) {
         include_attachments: true,
       });
 
-      downloadBlob(blob, `correos_exportados_${new Date().toISOString().split('T')[0]}.zip`);
+      downloadBlob(blob, `correos_${new Date().toISOString().split('T')[0]}.zip`);
       onExportComplete?.();
       clearSelection();
     } catch (error) {
@@ -47,48 +47,46 @@ export function SelectionBar({ pstId, onExportComplete }: SelectionBarProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-md"
         >
-          <div className="bg-gray-900 dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-4">
+          <div className="bg-stone-900 dark:bg-stone-800 rounded-xl shadow-xl border border-stone-700 p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                  <Package className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 rounded-lg bg-amber-600 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold">
+                  <p className="text-white font-medium text-sm">
                     {selectedIds.length} {selectedIds.length === 1 ? 'correo' : 'correos'}
                   </p>
-                  <p className="text-gray-400 text-sm">seleccionados</p>
+                  <p className="text-stone-400 text-xs">seleccionados</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={handleExport}
                   disabled={isExporting}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl font-medium shadow-lg transition-all duration-300 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
                 >
                   {isExporting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Exportando...
+                      Exportando
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      Descargar ZIP
+                      Descargar
                     </>
                   )}
-                </motion.button>
+                </button>
 
                 <button
                   onClick={clearSelection}
-                  className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-xl transition-colors"
+                  className="p-2 text-stone-400 hover:text-white hover:bg-stone-700 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>

@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Inbox, Send, Paperclip, Calendar, Loader2, FolderOpen, Mail } from 'lucide-react';
+import { Search, Inbox, Send, Paperclip, Calendar, Loader2, Mail } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useSelectionStore } from '@/lib/store';
 import { getDateGroup } from '@/lib/utils';
@@ -83,17 +83,17 @@ function MailPageContent() {
 
   if (!pstId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-gray-950 dark:to-slate-950">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--background))' }}>
         <div className="text-center">
-          <Mail className="w-16 h-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg">No hay archivo PST seleccionado</p>
+          <Mail className="w-16 h-16 text-stone-300 dark:text-stone-700 mx-auto mb-4" />
+          <p className="text-stone-500 dark:text-stone-400 text-lg">No hay archivo PST seleccionado</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 dark:from-gray-950 dark:via-slate-950 dark:to-gray-900">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Header showBackButton={true} onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
       <div className="flex h-[calc(100vh-64px)]">
@@ -113,7 +113,7 @@ function MailPageContent() {
 
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Search Header */}
-          <div className="bg-white/80 dark:bg-gray-900/80 glass-strong border-b border-gray-200/50 dark:border-gray-800/50 p-4 space-y-4">
+          <div className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 p-4 space-y-3">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -123,7 +123,7 @@ function MailPageContent() {
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               <QuickFilterChip
                 icon={<Inbox className="w-4 h-4" />}
-                label="Bandeja de entrada"
+                label="Bandeja"
                 onClick={() => handleQuickFilter('folder:Inbox')}
                 active={searchQuery === 'folder:Inbox'}
               />
@@ -135,7 +135,7 @@ function MailPageContent() {
               />
               <QuickFilterChip
                 icon={<Paperclip className="w-4 h-4" />}
-                label="Con adjuntos"
+                label="Adjuntos"
                 onClick={() => handleQuickFilter('has:attachment')}
                 active={searchQuery === 'has:attachment'}
               />
@@ -153,44 +153,30 @@ function MailPageContent() {
           </div>
 
           {/* Messages List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto bg-stone-50 dark:bg-stone-950">
             {messagesLoading ? (
               <div className="p-4 space-y-3">
                 {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-24 rounded-2xl" />
+                  <Skeleton key={i} className="h-20 rounded-xl" />
                 ))}
               </div>
             ) : messages && messages.length > 0 ? (
               <div className="p-4 space-y-6">
-                <AnimatePresence mode="wait">
-                  {Object.entries(groupedMessages).map(([group, msgs]) => (
-                    <motion.div
-                      key={group}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" />
-                        {group}
-                      </h3>
-                      <MessageList messages={msgs} pstId={pstId} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                {Object.entries(groupedMessages).map(([group, msgs]) => (
+                  <div key={group}>
+                    <h3 className="text-xs font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-3 px-1">
+                      {group}
+                    </h3>
+                    <MessageList messages={msgs} pstId={pstId} />
+                  </div>
+                ))}
 
                 {messages.length >= 50 && (
-                  <motion.div
-                    className="flex justify-center py-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
+                  <div className="flex justify-center py-4">
                     <button
                       onClick={() => setPage(p => p + 1)}
                       disabled={isFetching}
-                      className="px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-full hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 font-medium"
+                      className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                     >
                       {isFetching ? (
                         <span className="flex items-center gap-2">
@@ -198,19 +184,17 @@ function MailPageContent() {
                           Cargando...
                         </span>
                       ) : (
-                        'Cargar más correos'
+                        'Cargar más'
                       )}
                     </button>
-                  </motion.div>
+                  </div>
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center mb-4">
-                  <Search className="w-10 h-10 opacity-40" />
-                </div>
-                <p className="text-xl font-medium mb-2">No se encontraron correos</p>
-                <p className="text-sm text-gray-400">Intenta con otros términos de búsqueda</p>
+              <div className="flex flex-col items-center justify-center h-full text-stone-500 dark:text-stone-400 p-8">
+                <Search className="w-12 h-12 opacity-30 mb-4" />
+                <p className="text-lg font-medium mb-1">No se encontraron correos</p>
+                <p className="text-sm text-stone-400">Intenta con otros términos de búsqueda</p>
               </div>
             )}
           </div>
@@ -245,10 +229,10 @@ function QuickFilterChip({
     <button
       onClick={onClick}
       className={`
-        flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-300 whitespace-nowrap text-sm font-medium
+        flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 whitespace-nowrap text-sm font-medium
         ${active
-          ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg'
-          : 'bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30'
+          ? 'bg-amber-600 text-white'
+          : 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-amber-400 dark:hover:border-amber-600'
         }
       `}
     >
@@ -260,12 +244,12 @@ function QuickFilterChip({
 
 function MailPageLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-gray-950 dark:to-slate-950">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Header showBackButton={true} />
       <div className="flex items-center justify-center h-[calc(100vh-64px)]">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mx-auto mb-4" />
-          <p className="text-gray-500">Cargando correos...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-amber-600 mx-auto mb-4" />
+          <p className="text-stone-500">Cargando correos...</p>
         </div>
       </div>
     </div>

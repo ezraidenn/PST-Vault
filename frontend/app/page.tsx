@@ -31,7 +31,6 @@ export default function HomePage() {
     clearSelection();
 
     try {
-      // Simulate progress for large files
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -103,36 +102,36 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-gray-950 dark:via-slate-950 dark:to-gray-900">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Header showBackButton={false} />
 
-      <main className="container mx-auto px-4 py-8 md:py-16 max-w-5xl">
+      <main className="container mx-auto px-4 py-12 md:py-20 max-w-4xl">
         {/* Hero Section */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center mb-12 md:mb-16"
+          transition={{ duration: 0.4 }}
+          className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm font-medium mb-6 border border-amber-200 dark:border-amber-800/50">
             <Mail className="w-4 h-4" />
             Visor de Archivos PST
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight">
-            <span className="gradient-text-premium">PST Vault</span>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight text-stone-800 dark:text-stone-100">
+            PST Vault
           </h1>
-          <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Lee tus archivos de Outlook <span className="font-semibold text-gray-900 dark:text-gray-200">sin necesitar Outlook</span>.
+          <p className="text-lg text-stone-600 dark:text-stone-400 max-w-xl mx-auto leading-relaxed">
+            Lee tus archivos de Outlook <span className="font-semibold text-stone-800 dark:text-stone-200">sin necesitar Outlook</span>.
             Búsqueda instantánea, totalmente privado.
           </p>
         </motion.div>
 
         {/* Upload Card */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
           className="mb-16"
         >
           <div
@@ -143,13 +142,13 @@ export default function HomePage() {
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={`
-              relative rounded-3xl border-2 border-dashed p-8 md:p-16 transition-all duration-500
+              relative rounded-2xl border-2 border-dashed p-10 md:p-16 transition-all duration-300
               ${isDragging
-                ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 scale-[1.02] shadow-glow'
-                : 'border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-white dark:hover:bg-gray-900'
+                ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/10'
+                : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 hover:border-amber-400 dark:hover:border-amber-600'
               }
               ${isUploading ? 'pointer-events-none' : 'cursor-pointer'}
-              glass-strong shadow-premium-lg
+              shadow-elegant
             `}
           >
             <input
@@ -163,50 +162,43 @@ export default function HomePage() {
             <div className="flex flex-col items-center gap-6">
               {isUploading ? (
                 <>
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-indigo-500 rounded-full blur-2xl opacity-30 animate-pulse" />
-                    <div className="relative bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full p-6">
-                      <Loader2 className="w-12 h-12 text-white animate-spin" />
-                    </div>
+                  <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-amber-700 dark:text-amber-400 animate-spin" />
                   </div>
 
-                  <div className="text-center space-y-4 w-full max-w-md">
-                    <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="text-center space-y-4 w-full max-w-sm">
+                    <p className="text-lg font-semibold text-stone-800 dark:text-stone-200">
                       {uploadStatus}
                     </p>
 
-                    {/* Progress bar */}
-                    <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1.5 overflow-hidden">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                        className="h-full bg-amber-600 dark:bg-amber-500 rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${uploadProgress}%` }}
                         transition={{ duration: 0.3 }}
                       />
                     </div>
 
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Por favor espera mientras procesamos tu archivo...
+                    <p className="text-sm text-stone-500 dark:text-stone-400">
+                      Procesando archivo...
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="relative animate-float">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl blur-2xl opacity-20" />
-                    <div className="relative bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 shadow-lg">
-                      <Upload className="w-12 h-12 text-white" />
-                    </div>
+                  <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <Upload className="w-8 h-8 text-amber-700 dark:text-amber-400" />
                   </div>
 
                   <div className="text-center">
-                    <p className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    <p className="text-xl font-semibold text-stone-800 dark:text-stone-200 mb-2">
                       Arrastra tu archivo PST aquí
                     </p>
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    <p className="text-stone-500 dark:text-stone-400 mb-4">
                       o haz clic para seleccionar
                     </p>
-                    <div className="inline-flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800/50 px-4 py-2 rounded-full">
+                    <div className="inline-flex items-center gap-2 text-sm text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-full">
                       <FileText className="w-4 h-4" />
                       <span>Archivos .pst hasta 15GB</span>
                     </div>
@@ -219,26 +211,26 @@ export default function HomePage() {
 
         {/* Features */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
-              className="group p-6 rounded-2xl bg-white/60 dark:bg-gray-900/60 glass border border-gray-200/50 dark:border-gray-800/50 card-hover"
+              transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
+              className="p-5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-elegant card-hover"
             >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                <feature.icon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-3">
+                <feature.icon className="w-5 h-5 text-amber-700 dark:text-amber-400" />
               </div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              <h3 className="font-semibold text-stone-800 dark:text-stone-200 mb-1">
                 {feature.title}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-stone-500 dark:text-stone-400">
                 {feature.description}
               </p>
             </motion.div>
@@ -249,10 +241,10 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
+          <p className="text-sm text-stone-400 dark:text-stone-500 flex items-center justify-center gap-2">
             <Shield className="w-4 h-4" />
             Tus archivos se procesan localmente y nunca salen de tu dispositivo
           </p>
