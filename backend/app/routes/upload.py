@@ -10,6 +10,24 @@ from ..services.pst_parser import index_pst_file
 
 router = APIRouter()
 
+# Supported file extensions
+SUPPORTED_EXTENSIONS = ['.pst', '.ost', '.vem', '.temp', '.bak']
+
+
+def is_valid_pst_file(filename: str) -> bool:
+    """Check if file has a supported extension."""
+    lower_name = filename.lower()
+    # Handle compound extensions like .pst.vem
+    for ext in SUPPORTED_EXTENSIONS:
+        if lower_name.endswith(ext):
+            return True
+    # Also check for .pst.xxx patterns
+    if '.pst.' in lower_name or lower_name.endswith('.pst'):
+        return True
+    if '.ost' in lower_name:
+        return True
+    return False
+
 
 def calculate_file_hash_streaming(file_path: Path) -> str:
     """Calculate SHA256 hash by streaming the file in chunks."""
@@ -22,8 +40,11 @@ def calculate_file_hash_streaming(file_path: Path) -> str:
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_pst(file: UploadFile = File(...)):
-    if not file.filename.endswith('.pst'):
-        raise HTTPException(status_code=400, detail="Only .pst files are allowed")
+    if not is_valid_pst_file(file.filename):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Formato no soportado. Formatos válidos: .pst, .pst.vem, .pst.temp, .pst.bak, .ost"
+        )
 
     # Create temp storage directory
     storage_dir = Path(settings.STORAGE_DIR) / "pst"
@@ -48,7 +69,7 @@ async def upload_pst(file: UploadFile = File(...)):
                     temp_path.unlink(missing_ok=True)
                     raise HTTPException(
                         status_code=400,
-                        detail=f"File size exceeds maximum allowed ({settings.MAX_UPLOAD_MB}MB)"
+                        detail=f"El archivo excede el límite de {settings.MAX_UPLOAD_MB}MB"
                     )
                 
                 buffer.write(chunk)
@@ -107,14 +128,14 @@ async def upload_pst(file: UploadFile = File(...)):
                 folder_count=folder_count
             )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error indexing PST: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error indexando: {str(e)}")
             
     except HTTPException:
         raise
     except Exception as e:
         # Clean up temp file on error
         temp_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error subiendo archivo: {str(e)}")
 
 
 @router.get("/{pst_id}/status", response_model=PSTStatus)
@@ -125,7 +146,7 @@ async def get_pst_status(pst_id: str):
         result = cursor.fetchone()
 
         if not result:
-            raise HTTPException(status_code=404, detail="PST not found")
+            raise HTTPException(status_code=404, detail="PST no encontrado")
 
         return PSTStatus(
             pst_id=result['pst_id'],
@@ -135,3 +156,27 @@ async def get_pst_status(pst_id: str):
             created_at=result['created_at'],
             indexed_at=result['indexed_at']
         )
+
+
+@router.get("/list")
+async def list_pst_files():
+    """List all indexed PST files."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT pst_id, created_at, indexed_at, folder_count, message_count 
+            FROM pst_imports 
+            ORDER BY created_at DESC
+        """)
+        results = cursor.fetchall()
+        
+        return [
+            {
+                "pst_id": row['pst_id'],
+                "created_at": row['created_at'],
+                "indexed_at": row['indexed_at'],
+                "folder_count": row['folder_count'] or 0,
+                "message_count": row['message_count'] or 0
+            }
+            for row in results
+        ]

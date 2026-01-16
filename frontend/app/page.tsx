@@ -2,86 +2,142 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Upload, FileText, Loader2, Mail, Shield, Search, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Upload, FileText, Loader2, Mail, Shield, Search, Zap, Check, X, AlertCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useSelectionStore } from '@/lib/store';
 import { Header } from '@/components/Header';
 import { Toast } from '@/components/Toast';
 
+// Supported file extensions
+const SUPPORTED_EXTENSIONS = ['.pst', '.pst.vem', '.pst.temp', '.pst.bak', '.ost'];
+
+interface FileUploadState {
+  file: File;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  progress: number;
+  message?: string;
+  pstId?: string;
+  messageCount?: number;
+}
+
+function isValidPSTFile(filename: string): boolean {
+  const lowerName = filename.toLowerCase();
+  return SUPPORTED_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadQueue, setUploadQueue] = useState<FileUploadState[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const setPstId = useSelectionStore((state) => state.setPstId);
   const clearSelection = useSelectionStore((state) => state.clearSelection);
 
-  const handleFile = useCallback(async (file: File) => {
-    if (!file.name.endsWith('.pst')) {
-      setToast({ message: 'Por favor selecciona un archivo .pst', type: 'error' });
-      return;
+  const processFiles = useCallback(async (files: File[]) => {
+    // Filter valid files
+    const validFiles = files.filter(f => isValidPSTFile(f.name));
+    const invalidFiles = files.filter(f => !isValidPSTFile(f.name));
+
+    if (invalidFiles.length > 0) {
+      setToast({
+        message: `${invalidFiles.length} archivo(s) no soportado(s). Formatos válidos: ${SUPPORTED_EXTENSIONS.join(', ')}`,
+        type: 'error'
+      });
     }
 
-    setIsUploading(true);
-    setUploadStatus('Subiendo archivo...');
-    setUploadProgress(0);
+    if (validFiles.length === 0) return;
+
     clearSelection();
 
-    try {
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + Math.random() * 10;
-        });
-      }, 500);
+    // Initialize queue
+    const initialQueue: FileUploadState[] = validFiles.map(file => ({
+      file,
+      status: 'pending',
+      progress: 0
+    }));
+    setUploadQueue(initialQueue);
 
-      const response = await apiClient.uploadPST(file);
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+    // Process each file sequentially
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
 
-      if (response.already_indexed) {
-        setUploadStatus('¡Archivo ya indexado!');
-        setToast({ message: `PST listo: ${response.message_count.toLocaleString()} correos encontrados`, type: 'success' });
-      } else {
-        setUploadStatus('¡Indexación completada!');
-        setToast({ message: `Indexados ${response.message_count.toLocaleString()} correos de ${response.folder_count} carpetas`, type: 'success' });
+      // Update status to uploading
+      setUploadQueue(prev => prev.map((item, idx) =>
+        idx === i ? { ...item, status: 'uploading', progress: 0 } : item
+      ));
+
+      try {
+        // Simulate progress
+        const progressInterval = setInterval(() => {
+          setUploadQueue(prev => prev.map((item, idx) =>
+            idx === i && item.status === 'uploading'
+              ? { ...item, progress: Math.min(item.progress + Math.random() * 15, 90) }
+              : item
+          ));
+        }, 300);
+
+        const response = await apiClient.uploadPST(file);
+        clearInterval(progressInterval);
+
+        // Update to success
+        setUploadQueue(prev => prev.map((item, idx) =>
+          idx === i ? {
+            ...item,
+            status: 'success',
+            progress: 100,
+            pstId: response.pst_id,
+            messageCount: response.message_count,
+            message: response.already_indexed
+              ? `Ya indexado: ${response.message_count.toLocaleString()} correos`
+              : `${response.message_count.toLocaleString()} correos indexados`
+          } : item
+        ));
+
+        // Set the last successful PST as current
+        setPstId(response.pst_id);
+
+      } catch (error: any) {
+        // Update to error
+        setUploadQueue(prev => prev.map((item, idx) =>
+          idx === i ? {
+            ...item,
+            status: 'error',
+            progress: 0,
+            message: error.message || 'Error al procesar'
+          } : item
+        ));
       }
-
-      setPstId(response.pst_id);
-
-      setTimeout(() => {
-        router.push(`/mail?pst_id=${response.pst_id}`);
-      }, 1500);
-    } catch (error: any) {
-      setToast({ message: error.message || 'Error al subir archivo', type: 'error' });
-      setIsUploading(false);
-      setUploadStatus('');
-      setUploadProgress(0);
     }
-  }, [router, setPstId, clearSelection]);
+  }, [clearSelection, setPstId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFile(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      processFiles(files);
     }
-  }, [handleFile]);
+  }, [processFiles]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      processFiles(files);
     }
-  }, [handleFile]);
+  }, [processFiles]);
+
+  const handleGoToMail = (pstId: string) => {
+    router.push(`/mail?pst_id=${pstId}`);
+  };
+
+  const handleClearQueue = () => {
+    setUploadQueue([]);
+  };
+
+  const successCount = uploadQueue.filter(f => f.status === 'success').length;
+  const isUploading = uploadQueue.some(f => f.status === 'uploading');
 
   const features = [
     {
@@ -96,8 +152,8 @@ export default function HomePage() {
     },
     {
       icon: Zap,
-      title: 'Ultra Rápido',
-      description: 'Indexación y búsqueda instantánea con SQLite'
+      title: 'Subida Masiva',
+      description: 'Sube múltiples archivos PST a la vez'
     }
   ];
 
@@ -105,13 +161,13 @@ export default function HomePage() {
     <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--background))' }}>
       <Header showBackButton={false} />
 
-      <main className="container mx-auto px-4 py-12 md:py-20 max-w-4xl">
+      <main className="container mx-auto px-4 py-12 md:py-16 max-w-4xl">
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm font-medium mb-6 border border-amber-200 dark:border-amber-800/50">
             <Mail className="w-4 h-4" />
@@ -123,7 +179,7 @@ export default function HomePage() {
           </h1>
           <p className="text-lg text-stone-600 dark:text-stone-400 max-w-xl mx-auto leading-relaxed">
             Lee tus archivos de Outlook <span className="font-semibold text-stone-800 dark:text-stone-200">sin necesitar Outlook</span>.
-            Búsqueda instantánea, totalmente privado.
+            Soporta múltiples archivos simultáneamente.
           </p>
         </motion.div>
 
@@ -132,7 +188,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="mb-16"
+          className="mb-8"
         >
           <div
             onDragOver={(e) => {
@@ -142,7 +198,7 @@ export default function HomePage() {
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={`
-              relative rounded-2xl border-2 border-dashed p-10 md:p-16 transition-all duration-300
+              relative rounded-2xl border-2 border-dashed p-8 md:p-12 transition-all duration-300
               ${isDragging
                 ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/10'
                 : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 hover:border-amber-400 dark:hover:border-amber-600'
@@ -153,61 +209,130 @@ export default function HomePage() {
           >
             <input
               type="file"
-              accept=".pst"
+              accept=".pst,.ost,.vem,.temp,.bak"
+              multiple
               onChange={handleFileInput}
               disabled={isUploading}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
 
-            <div className="flex flex-col items-center gap-6">
-              {isUploading ? (
-                <>
-                  <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 text-amber-700 dark:text-amber-400 animate-spin" />
-                  </div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Upload className="w-7 h-7 text-amber-700 dark:text-amber-400" />
+              </div>
 
-                  <div className="text-center space-y-4 w-full max-w-sm">
-                    <p className="text-lg font-semibold text-stone-800 dark:text-stone-200">
-                      {uploadStatus}
-                    </p>
-
-                    <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1.5 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-amber-600 dark:bg-amber-500 rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${uploadProgress}%` }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    </div>
-
-                    <p className="text-sm text-stone-500 dark:text-stone-400">
-                      Procesando archivo...
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                    <Upload className="w-8 h-8 text-amber-700 dark:text-amber-400" />
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xl font-semibold text-stone-800 dark:text-stone-200 mb-2">
-                      Arrastra tu archivo PST aquí
-                    </p>
-                    <p className="text-stone-500 dark:text-stone-400 mb-4">
-                      o haz clic para seleccionar
-                    </p>
-                    <div className="inline-flex items-center gap-2 text-sm text-stone-400 dark:text-stone-500 bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-full">
-                      <FileText className="w-4 h-4" />
-                      <span>Archivos .pst hasta 15GB</span>
-                    </div>
-                  </div>
-                </>
-              )}
+              <div className="text-center">
+                <p className="text-xl font-semibold text-stone-800 dark:text-stone-200 mb-2">
+                  Arrastra tus archivos aquí
+                </p>
+                <p className="text-stone-500 dark:text-stone-400 mb-3">
+                  o haz clic para seleccionar múltiples archivos
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 text-xs">
+                  {SUPPORTED_EXTENSIONS.map(ext => (
+                    <span key={ext} className="px-2 py-1 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 rounded">
+                      {ext}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-stone-400 dark:text-stone-500 mt-2">
+                  Hasta 15GB por archivo
+                </p>
+              </div>
             </div>
           </div>
         </motion.div>
+
+        {/* Upload Queue */}
+        <AnimatePresence>
+          {uploadQueue.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-8"
+            >
+              <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 shadow-elegant overflow-hidden">
+                <div className="p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
+                  <h3 className="font-semibold text-stone-800 dark:text-stone-200">
+                    Archivos ({successCount}/{uploadQueue.length} completados)
+                  </h3>
+                  {!isUploading && (
+                    <button
+                      onClick={handleClearQueue}
+                      className="text-sm text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+
+                <div className="divide-y divide-stone-100 dark:divide-stone-800">
+                  {uploadQueue.map((item, index) => (
+                    <div key={index} className="p-4">
+                      <div className="flex items-center gap-3">
+                        {/* Status icon */}
+                        <div className={`
+                          w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+                          ${item.status === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
+                            item.status === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
+                              item.status === 'uploading' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                                'bg-stone-100 dark:bg-stone-800'}
+                        `}>
+                          {item.status === 'success' ? (
+                            <Check className="w-5 h-5 text-green-600" />
+                          ) : item.status === 'error' ? (
+                            <AlertCircle className="w-5 h-5 text-red-600" />
+                          ) : item.status === 'uploading' ? (
+                            <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
+                          ) : (
+                            <FileText className="w-5 h-5 text-stone-400" />
+                          )}
+                        </div>
+
+                        {/* File info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-stone-800 dark:text-stone-200 truncate text-sm">
+                            {item.file.name}
+                          </p>
+                          <p className={`text-xs ${item.status === 'success' ? 'text-green-600' :
+                              item.status === 'error' ? 'text-red-600' :
+                                'text-stone-500'
+                            }`}>
+                            {item.message || (item.status === 'uploading'
+                              ? 'Procesando...'
+                              : item.status === 'pending'
+                                ? 'En espera...'
+                                : '')}
+                          </p>
+
+                          {item.status === 'uploading' && (
+                            <div className="mt-2 w-full bg-stone-200 dark:bg-stone-700 rounded-full h-1">
+                              <div
+                                className="h-full bg-amber-600 rounded-full transition-all duration-300"
+                                style={{ width: `${item.progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action */}
+                        {item.status === 'success' && item.pstId && (
+                          <button
+                            onClick={() => handleGoToMail(item.pstId!)}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            Ver correos
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Features */}
         <motion.div
@@ -242,7 +367,7 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.5 }}
-          className="mt-16 text-center"
+          className="mt-12 text-center"
         >
           <p className="text-sm text-stone-400 dark:text-stone-500 flex items-center justify-center gap-2">
             <Shield className="w-4 h-4" />
