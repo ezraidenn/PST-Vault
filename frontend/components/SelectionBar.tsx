@@ -17,14 +17,16 @@ export function SelectionBar({ pstId, onExportComplete }: SelectionBarProps) {
   const clearSelection = useSelectionStore((state) => state.clearSelection);
   const [isExporting, setIsExporting] = useState(false);
 
+  const selectedIdsArray = Array.from(selectedIds);
+
   const handleExport = async () => {
-    if (selectedIds.length === 0) return;
+    if (selectedIdsArray.length === 0) return;
 
     setIsExporting(true);
     try {
       const blob = await apiClient.exportMessages({
         pst_id: pstId,
-        message_ids: selectedIds,
+        message_ids: selectedIdsArray,
         format: 'eml',
         include_attachments: true,
       });
@@ -41,7 +43,7 @@ export function SelectionBar({ pstId, onExportComplete }: SelectionBarProps) {
 
   return (
     <AnimatePresence>
-      {selectedIds.length > 0 && (
+      {selectedIdsArray.length > 0 && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -57,7 +59,7 @@ export function SelectionBar({ pstId, onExportComplete }: SelectionBarProps) {
                 </div>
                 <div>
                   <p className="text-white font-medium text-sm">
-                    {selectedIds.length} {selectedIds.length === 1 ? 'correo' : 'correos'}
+                    {selectedIdsArray.length} {selectedIdsArray.length === 1 ? 'correo' : 'correos'}
                   </p>
                   <p className="text-stone-400 text-xs">seleccionados</p>
                 </div>

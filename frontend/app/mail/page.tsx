@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Inbox, Send, Paperclip, Calendar, Loader2, Mail } from 'lucide-react';
-import { apiClient } from '@/lib/api';
+import { apiClient, MessageListItem } from '@/lib/api';
 import { useSelectionStore } from '@/lib/store';
 import { getDateGroup } from '@/lib/utils';
 import { Header } from '@/components/Header';
@@ -23,6 +23,8 @@ function MailPageContent() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+  const [allMessages, setAllMessages] = useState<MessageListItem[]>([]);
+  const [hasMore, setHasMore] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -39,10 +41,20 @@ function MailPageContent() {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
       setPage(1);
+      setAllMessages([]);
+      setHasMore(true);
     }, 200);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (selectedFolder !== null) {
+      setPage(1);
+      setAllMessages([]);
+      setHasMore(true);
+    }
+  }, [selectedFolder]);
 
   const { data: folders, isLoading: foldersLoading } = useQuery({
     queryKey: ['folders', pstId],
@@ -61,11 +73,24 @@ function MailPageContent() {
     enabled: !!pstId,
   });
 
-  const groupedMessages = useMemo(() => {
-    if (!messages) return {};
+  // Accumulate messages when new data arrives
+  useEffect(() => {
+    if (messages) {
+      if (page === 1) {
+        setAllMessages(messages);
+      } else {
+        setAllMessages(prev => [...prev, ...messages]);
+      }
+      // If we got less than 50 messages, there's no more to load
+      setHasMore(messages.length === 50);
+    }
+  }, [messages, page]);
 
-    const groups: Record<string, typeof messages> = {};
-    messages.forEach((msg) => {
+  const groupedMessages = useMemo(() => {
+    if (!allMessages) return {};
+
+    const groups: Record<string, MessageListItem[]> = {};
+    allMessages.forEach((msg) => {
       const group = getDateGroup(msg.date_utc);
       if (!groups[group]) {
         groups[group] = [];
@@ -74,7 +99,7 @@ function MailPageContent() {
     });
 
     return groups;
-  }, [messages]);
+  }, [allMessages]);
 
   const handleQuickFilter = (filter: string) => {
     setSearchQuery(filter);
@@ -145,7 +170,7 @@ function MailPageContent() {
                 onClick={() => {
                   const date = new Date();
                   date.setDate(date.getDate() - 7);
-                  handleQuickFilter(`after:${date.toISOString().split('T')[0]}`);
+                  handleQuickFilter(`after:${date.toISOString()}`);
                 }}
                 active={searchQuery.startsWith('after:')}
               />
@@ -160,7 +185,7 @@ function MailPageContent() {
                   <Skeleton key={i} className="h-20 rounded-xl" />
                 ))}
               </div>
-            ) : messages && messages.length > 0 ? (
+            ) : allMessages && allMessages.length > 0 ? (
               <div className="p-4 space-y-6">
                 {Object.entries(groupedMessages).map(([group, msgs]) => (
                   <div key={group}>
@@ -171,7 +196,7 @@ function MailPageContent() {
                   </div>
                 ))}
 
-                {messages.length >= 50 && (
+                {hasMore && allMessages.length >= 50 && (
                   <div className="flex justify-center py-4">
                     <button
                       onClick={() => setPage(p => p + 1)}

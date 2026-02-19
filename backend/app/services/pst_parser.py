@@ -39,12 +39,16 @@ def get_message_body_outlook(mail_item) -> Tuple[Optional[str], Optional[str]]:
     body_html = None
 
     try:
-        body_text = mail_item.Body
+        raw_body = mail_item.Body
+        if raw_body:
+            body_text = str(raw_body).encode('utf-8', errors='replace').decode('utf-8')
     except:
         pass
 
     try:
-        body_html = mail_item.HTMLBody
+        raw_html = mail_item.HTMLBody
+        if raw_html:
+            body_html = str(raw_html).encode('utf-8', errors='replace').decode('utf-8')
     except:
         pass
 
@@ -85,7 +89,7 @@ def save_attachment_outlook(attachment, message_id: int, pst_id: str) -> Optiona
                 'stored_path': None
             }
 
-        attachment_dir = Path(settings.STORAGE_DIR) / "attachments" / pst_id / str(message_id)
+        attachment_dir = Path(settings.STORAGE_DIR).resolve() / "attachments" / pst_id / str(message_id)
         attachment_dir.mkdir(parents=True, exist_ok=True)
 
         safe_filename = filename
@@ -466,7 +470,7 @@ def save_attachment_pypff(attachment, message_id: int, pst_id: str) -> Optional[
                 'stored_path': None
             }
 
-        attachment_dir = Path(settings.STORAGE_DIR) / "attachments" / pst_id / str(message_id)
+        attachment_dir = Path(settings.STORAGE_DIR).resolve() / "attachments" / pst_id / str(message_id)
         attachment_dir.mkdir(parents=True, exist_ok=True)
 
         safe_filename = filename

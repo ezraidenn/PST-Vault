@@ -1,6 +1,5 @@
 'use client';
 
-import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -13,10 +12,9 @@ import { Toast } from '@/components/Toast';
 import { Skeleton } from '@/components/Skeleton';
 import { useState } from 'react';
 
-export default function MessageDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function MessageDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const messageId = parseInt(resolvedParams.id);
+  const messageId = parseInt(params.id);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
@@ -33,12 +31,17 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
     try {
       setDownloadingId(attachmentId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/attachments/${attachmentId}/download`);
-      if (!response.ok) throw new Error('Error al descargar');
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Archivo adjunto no encontrado o no disponible');
+        }
+        throw new Error(`Error al descargar: ${response.status}`);
+      }
       const blob = await response.blob();
       downloadBlob(blob, filename);
       setToast({ message: 'Archivo descargado', type: 'success' });
-    } catch (error) {
-      setToast({ message: 'Error al descargar archivo', type: 'error' });
+    } catch (error: any) {
+      setToast({ message: error.message || 'Error al descargar archivo', type: 'error' });
     } finally {
       setDownloadingId(null);
     }

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .core.db import init_db
-from .routes import upload, folders, messages, search, export
+from .routes import upload, folders, messages, search, export, attachments
 
 
 app = FastAPI(title="PST Vault API", version="1.0.0")
@@ -31,3 +31,4 @@ app.include_router(folders.router, prefix="/folders", tags=["folders"])
 app.include_router(messages.router, prefix="/messages", tags=["messages"])
 app.include_router(search.router, prefix="/search", tags=["search"])
 app.include_router(export.router, prefix="/messages", tags=["export"])
+app.include_router(attachments.router, prefix="/attachments", tags=["attachments"])
